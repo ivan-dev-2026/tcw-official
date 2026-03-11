@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日常闹钟定时任务管理</title>
+    <style>
+        /* 整体样式，适配办公场景，简洁易操作 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "Arial", sans-serif;
+        }
+        body {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+        .add-task {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        input, select, button {
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        #task-name {
+            flex: 1;
+            min-width: 200px;
+        }
+        #task-time {
+            width: 180px;
+        }
+        .btn-add {
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-add:hover {
+            background-color: #3182ce;
+        }
+        .task-list {
+            margin-top: 20px;
+        }
+        .task-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 8px;
+        }
+        .task-item.completed {
+            opacity: 0.7;
+            text-decoration: line-through;
+        }
+        .task-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .task-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-complete, .btn-delete {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-complete {
+            background-color: #48bb78;
+            color: white;
+        }
+        .btn-delete {
+            background-color: #e53e3e;
+            color: white;
+        }
+        .alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            text-align: center;
+        }
+        .alert h2 {
+            color: #4299e1;
+            margin-bottom: 15px;
+        }
+        .btn-close {
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>日常闹钟定时任务管理</h1>
+        
+        <!-- 添加任务区域 -->
+        <div class="add-task">
+            <input type="text" id="task-name" placeholder="输入任务名称（如：开会、喝水、提交报表）">
+            <input type="time" id="task-time">
+            <button class="btn-add" onclick="addTask()">添加定时任务</button>
+        </div>
+
+        <!-- 任务列表区域 -->
+        <div class="task-list" id="task-list">
+            <!-- 任务项会通过JS动态生成 -->
+            <div class="task-item">
+                <div class="task-info">
+                    <span>暂无任务，添加你的第一个定时任务吧！</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提醒弹窗 -->
+    <div class="alert hidden" id="alert-modal">
+        <h2 id="alert-title">定时提醒</h2>
+        <p id="alert-content"></p>
+        <button class="btn-close" onclick="closeAlert()">关闭</button>
+    </div>
+
+    <script>
+        // 存储任务列表（本地存储，刷新页面不丢失）
+        let tasks = JSON.parse(localStorage.getItem('alarmTasks')) || [];
+        
+        // 页面加载时渲染任务列表
+        window.onload = function() {
+            renderTasks();
+            // 启动定时器，每秒检查是否有任务到期
+            setInterval(checkAlarms, 1000);
+        };
+
+        // 添加新任务
+        function addTask() {
+            const taskName = document.getElementById('task-name').value.trim();
+            const taskTime = document.getElementById('task-time').value;
+
+            // 验证输入
+            if (!taskName) {
+                alert('请输入任务名称！');
+                return;
+            }
+            if (!taskTime) {
+                alert('请选择提醒时间！');
+                return;
+            }
+
+            // 创建新任务对象
+            const newTask = {
+                id: Date.now(), // 用时间戳作为唯一ID
+                name: taskName,
+                time: taskTime,
+                completed: false
+            };
+
+            // 添加到任务列表并保存到本地存储
+            tasks.push(newTask);
+            saveTasks();
+            // 重新渲染列表
+            renderTasks();
+            // 清空输入框
+            document.getElementById('task-name').value = '';
+            document.getElementById('task-time').value = '';
+
+            alert('定时任务添加成功！');
+        }
+
+        // 渲染任务列表
+        function renderTasks() {
+            const taskListEl = document.getElementById('task-list');
+            
+            // 如果没有任务，显示提示
+            if (tasks.length === 0) {
+                taskListEl.innerHTML = `
+                    <div class="task-item">
+                        <div class="task-info">
+                            <span>暂无任务，添加你的第一个定时任务吧！</span>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 生成任务项HTML
+            let taskHtml = '';
+            tasks.forEach(task => {
+                taskHtml += `
+                    <div class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                        <div class="task-info">
+                            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleComplete(${task.id})">
+                            <span>${task.name} - ${task.time}</span>
+                        </div>
+                        <div class="task-actions">
+                            <button class="btn-complete" onclick="toggleComplete(${task.id})">
+                                ${task.completed ? '取消完成' : '标记完成'}
+                            </button>
+                            <button class="btn-delete" onclick="deleteTask(${task.id})">删除</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            taskListEl.innerHTML = taskHtml;
+        }
+
+        // 标记任务完成/取消完成
+        function toggleComplete(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        // 删除任务
+        function deleteTask(taskId) {
+            if (confirm('确定要删除这个定时任务吗？')) {
+                tasks = tasks.filter(t => t.id !== taskId);
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        // 保存任务到本地存储
+        function saveTasks() {
+            localStorage.setItem('alarmTasks', JSON.stringify(tasks));
+        }
+
+        // 检查是否有任务到期
+        function checkAlarms() {
+            const now = new Date();
+            // 获取当前时间（HH:MM格式）
+            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
+            // 遍历未完成的任务，检查时间是否匹配
+            tasks.forEach(task => {
+                if (!task.completed && task.time === currentTime) {
+                    showAlert(task.name);
+                    // 播放语音提醒（浏览器自带语音合成）
+                    speak(`提醒你，该${task.name}了！`);
+                }
+            });
+        }
+
+        // 显示提醒弹窗
+        function showAlert(taskName) {
+            const alertModal = document.getElementById('alert-modal');
+            const alertContent = document.getElementById('alert-content');
+            alertContent.textContent = `该${taskName}了！`;
+            alertModal.classList.remove('hidden');
+        }
+
+        // 关闭提醒弹窗
+        function closeAlert() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+
+        // 语音提醒功能
+        function speak(text) {
+            // 检查浏览器是否支持语音合成
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-CN'; // 设置中文
+                utterance.volume = 1; // 音量（0-1）
+                utterance.rate = 1; // 语速（0.1-10）
+                utterance.pitch = 1; // 音调（0-2）
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+    </script>
+</body>
+</html>
