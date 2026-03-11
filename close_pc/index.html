@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows 智能关机助手</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 自定义配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        dark: '#1D2129',
+                        light: '#F2F3F5'
+                    },
+                    fontFamily: {
+                        sans: ['Microsoft YaHei', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .shadow-custom {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .transition-all-300 {
+                transition: all 0.3s ease;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-dark">
+    <div class="max-w-md mx-auto px-4 py-8">
+        <!-- 标题区域 -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                <i class="fa fa-power-off text-3xl text-primary"></i>
+            </div>
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark mb-2">智能关机助手</h1>
+            <p class="text-gray-500">轻松设置Windows自动关机计划</p>
+        </div>
+
+        <!-- 主卡片 -->
+        <div class="bg-white rounded-xl shadow-custom p-6 mb-6">
+            <!-- 时间设置 -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fa fa-clock-o text-primary mr-2"></i>关机时间设置
+                </h2>
+                <div class="flex space-x-4">
+                    <div class="flex-1">
+                        <label class="block text-sm text-gray-600 mb-1">小时</label>
+                        <select id="hour" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all-300">
+                            <!-- 动态生成小时选项 -->
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm text-gray-600 mb-1">分钟</label>
+                        <select id="minute" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all-300">
+                            <!-- 动态生成分钟选项 -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 重复设置 -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fa fa-repeat text-primary mr-2"></i>重复设置
+                </h2>
+                <div class="space-y-3">
+                    <label class="flex items-center">
+                        <input type="radio" name="repeat" value="once" checked class="w-4 h-4 text-primary focus:ring-primary/30">
+                        <span class="ml-2 text-gray-700">仅一次</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="repeat" value="daily" class="w-4 h-4 text-primary focus:ring-primary/30">
+                        <span class="ml-2 text-gray-700">每天</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="repeat" value="monthly" class="w-4 h-4 text-primary focus:ring-primary/30">
+                        <span class="ml-2 text-gray-700">每月</span>
+                    </label>
+                </div>
+
+                <!-- 每月日期选择（默认隐藏） -->
+                <div id="monthDayContainer" class="mt-4 hidden">
+                    <label class="block text-sm text-gray-600 mb-1">日期</label>
+                    <select id="monthDay" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all-300">
+                        <!-- 动态生成日期选项 -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- 状态显示 -->
+            <div id="statusContainer" class="mb-6 p-3 bg-gray-50 rounded-lg">
+                <p id="statusText" class="text-sm text-success">当前状态：未设置定时关机</p>
+                <p id="countdownText" class="text-sm text-gray-500 mt-1 hidden"></p>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="grid grid-cols-3 gap-3">
+                <button id="setShutdownBtn" class="bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-all-300 flex items-center justify-center">
+                    <i class="fa fa-check mr-1"></i> 设置关机
+                </button>
+                <button id="cancelShutdownBtn" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 active:bg-gray-400 transition-all-300 flex items-center justify-center" disabled>
+                    <i class="fa fa-times mr-1"></i> 取消关机
+                </button>
+                <button id="immediateShutdownBtn" class="bg-danger text-white py-2 px-4 rounded-lg hover:bg-danger/90 active:bg-danger/80 transition-all-300 flex items-center justify-center">
+                    <i class="fa fa-power-off mr-1"></i> 立即关机
+                </button>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <div class="text-center text-sm text-gray-500">
+            <p>适用于所有Windows操作系统 | 建议以管理员身份运行</p>
+        </div>
+    </div>
+
+    <script>
+        // 初始化DOM元素
+        const hourSelect = document.getElementById('hour');
+        const minuteSelect = document.getElementById('minute');
+        const monthDaySelect = document.getElementById('monthDay');
+        const monthDayContainer = document.getElementById('monthDayContainer');
+        const repeatRadios = document.querySelectorAll('input[name="repeat"]');
+        const setShutdownBtn = document.getElementById('setShutdownBtn');
+        const cancelShutdownBtn = document.getElementById('cancelShutdownBtn');
+        const immediateShutdownBtn = document.getElementById('immediateShutdownBtn');
+        const statusText = document.getElementById('statusText');
+        const countdownText = document.getElementById('countdownText');
+        
+        // 生成小时选项 (00-23)
+        for (let i = 0; i < 24; i++) {
+            const option = document.createElement('option');
+            option.value = i.toString().padStart(2, '0');
+            option.textContent = i.toString().padStart(2, '0');
+            if (i === 23) option.selected = true; // 默认23点
+            hourSelect.appendChild(option);
+        }
+        
+        // 生成分钟选项 (00-59)
+        for (let i = 0; i < 60; i++) {
+            const option = document.createElement('option');
+            option.value = i.toString().padStart(2, '0');
+            option.textContent = i.toString().padStart(2, '0');
+            if (i === 0) option.selected = true; // 默认00分
+            minuteSelect.appendChild(option);
+        }
+        
+        // 生成日期选项 (1-31)
+        for (let i = 1; i <= 31; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            if (i === 1) option.selected = true; // 默认1号
+            monthDaySelect.appendChild(option);
+        }
+        
+        // 重复选项变更处理
+        repeatRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.value === 'monthly') {
+                    monthDayContainer.classList.remove('hidden');
+                } else {
+                    monthDayContainer.classList.add('hidden');
+                }
+            });
+        });
+        
+        // 倒计时更新
+        let countdownInterval;
+        
+        // 设置关机
+        setShutdownBtn.addEventListener('click', async () => {
+            const hour = hourSelect.value;
+            const minute = minuteSelect.value;
+            const repeat = document.querySelector('input[name="repeat"]:checked').value;
+            const monthDay = monthDaySelect.value;
+            
+            // 构建请求数据
+            const data = {
+                hour,
+                minute,
+                repeat,
+                monthDay: repeat === 'monthly' ? monthDay : null
+            };
+            
+            try {
+                const response = await fetch('http://localhost:3000/set-shutdown', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 更新UI状态
+                    statusText.textContent = `当前状态：已设置${result.repeatText}在 ${result.targetTime} 关机`;
+                    statusText.className = 'text-sm text-danger';
+                    setShutdownBtn.disabled = true;
+                    cancelShutdownBtn.disabled = false;
+                    cancelShutdownBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                    cancelShutdownBtn.classList.add('bg-warning', 'text-white');
+                    
+                    // 启动倒计时
+                    countdownText.classList.remove('hidden');
+                    clearInterval(countdownInterval);
+                    countdownInterval = setInterval(async () => {
+                        const countdownResponse = await fetch('http://localhost:3000/countdown');
+                        const countdownResult = await countdownResponse.json();
+                        if (countdownResult.success) {
+                            countdownText.textContent = `剩余时间：${countdownResult.countdown}`;
+                        } else {
+                            clearInterval(countdownInterval);
+                            countdownText.classList.add('hidden');
+                        }
+                    }, 1000);
+                    
+                    alert('定时关机已设置成功！');
+                } else {
+                    alert(`设置失败：${result.message}`);
+                }
+            } catch (error) {
+                alert('连接服务器失败，请确保后端服务已启动！');
+                console.error(error);
+            }
+        });
+        
+        // 取消关机
+        cancelShutdownBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://localhost:3000/cancel-shutdown', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 更新UI状态
+                    statusText.textContent = '当前状态：定时关机已取消';
+                    statusText.className = 'text-sm text-warning';
+                    setShutdownBtn.disabled = false;
+                    cancelShutdownBtn.disabled = true;
+                    cancelShutdownBtn.classList.add('bg-gray-200', 'text-gray-700');
+                    cancelShutdownBtn.classList.remove('bg-warning', 'text-white');
+                    
+                    // 停止倒计时
+                    clearInterval(countdownInterval);
+                    countdownText.classList.add('hidden');
+                    
+                    alert('定时关机已取消！');
+                } else {
+                    alert(`取消失败：${result.message}`);
+                }
+            } catch (error) {
+                alert('连接服务器失败，请确保后端服务已启动！');
+                console.error(error);
+            }
+        });
+        
+        // 立即关机
+        immediateShutdownBtn.addEventListener('click', async () => {
+            if (confirm('警告：确定要立即关闭计算机吗？未保存的工作将会丢失！')) {
+                try {
+                    const response = await fetch('http://localhost:3000/immediate-shutdown', {
+                        method: 'POST'
+                    });
+                    
+                    const result = await response.json();
+                    if (!result.success) {
+                        alert(`关机失败：${result.message}`);
+                    }
+                } catch (error) {
+                    alert('连接服务器失败，请确保后端服务已启动！');
+                    console.error(error);
+                }
+            }
+        });
+        
+        // 页面加载时检查状态
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('http://localhost:3000/status');
+                const result = await response.json();
+                
+                if (result.scheduled) {
+                    statusText.textContent = `当前状态：已设置${result.repeatText}在 ${result.targetTime} 关机`;
+                    statusText.className = 'text-sm text-danger';
+                    setShutdownBtn.disabled = true;
+                    cancelShutdownBtn.disabled = false;
+                    cancelShutdownBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                    cancelShutdownBtn.classList.add('bg-warning', 'text-white');
+                    
+                    // 启动倒计时
+                    countdownText.classList.remove('hidden');
+                    clearInterval(countdownInterval);
+                    countdownInterval = setInterval(async () => {
+                        const countdownResponse = await fetch('http://localhost:3000/countdown');
+                        const countdownResult = await countdownResponse.json();
+                        if (countdownResult.success) {
+                            countdownText.textContent = `剩余时间：${countdownResult.countdown}`;
+                        } else {
+                            clearInterval(countdownInterval);
+                            countdownText.classList.add('hidden');
+                        }
+                    }, 1000);
+                }
+            } catch (error) {
+                console.log('无法连接到服务器，可能未启动');
+            }
+        });
+    </script>
+</body>
+</html>
